@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crowny Exchange — 로그인</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--bg2:#111827;--bg3:#1a2236;--green:#00e676;--purple:#7c4dff;--blue:#448aff;--red:#ff5252;--text:#e8eaed;--text2:#9ca3af;--text3:#6b7280;--border:#1e2a3a}
+body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.glow{position:fixed;width:500px;height:500px;border-radius:50%;pointer-events:none;filter:blur(80px);opacity:.3}
+.g1{top:-100px;left:20%;background:var(--green)}
+.g2{bottom:-100px;right:20%;background:var(--purple)}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px;width:420px;max-width:90vw;position:relative;z-index:1;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.logo{text-align:center;margin-bottom:28px}
+.logo .trit{font-size:36px;margin-bottom:8px}
+.logo h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--green),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:12px;color:var(--text3);margin-top:4px}
+
+.tabs{display:flex;margin-bottom:24px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .2s;background:transparent}
+.tab.active{background:var(--green);color:#000}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field input{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border .2s}
+.field input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,230,118,.1)}
+.field input::placeholder{color:var(--text3)}
+
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;margin-top:8px}
+.btn-primary{background:linear-gradient(135deg,var(--green),#00c853);color:#000}
+.btn-primary:hover{filter:brightness(1.1);box-shadow:0 0 30px rgba(0,230,118,.2)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+
+.error{background:rgba(255,82,82,.1);border:1px solid var(--red);color:var(--red);padding:10px;border-radius:8px;font-size:12px;margin-bottom:12px;display:none}
+.success{background:rgba(0,230,118,.1);border:1px solid var(--green);color:var(--green);padding:10px;border-radius:8px;font-size:12px;margin-bottom:12px;display:none}
+
+.footer{text-align:center;margin-top:20px;font-size:11px;color:var(--text3)}
+.footer a{color:var(--green);text-decoration:none}
+
+.demo-hint{text-align:center;margin-top:16px;padding:12px;background:var(--bg);border-radius:8px;font-size:11px;color:var(--text3)}
+.demo-hint b{color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="glow g1"></div>
+<div class="glow g2"></div>
+
+<div class="card">
+  <div class="logo">
+    <div class="trit">△○▽</div>
+    <h1>Crowny Exchange</h1>
+    <p>CrownyDEX + Trading AI Platform</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('login')">로그인</div>
+    <div class="tab" onclick="showTab('register')">회원가입</div>
+  </div>
+
+  <div id="error" class="error"></div>
+  <div id="success" class="success"></div>
+
+  <!-- Login Form -->
+  <div id="loginForm">
+    <div class="field">
+      <label>이메일 또는 사용자명</label>
+      <input type="text" id="loginEmail" placeholder="email@example.com" autofocus>
+    </div>
+    <div class="field">
+      <label>비밀번호</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">로그인</button>
+  </div>
+
+  <!-- Register Form -->
+  <div id="registerForm" style="display:none">
+    <div class="field">
+      <label>이메일</label>
+      <input type="email" id="regEmail" placeholder="email@example.com">
+    </div>
+    <div class="field">
+      <label>사용자명</label>
+      <input type="text" id="regUsername" placeholder="crowny_trader">
+    </div>
+    <div class="field">
+      <label>비밀번호 (6자 이상)</label>
+      <input type="password" id="regPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doRegister()">
+    </div>
+    <button class="btn btn-primary" id="regBtn" onclick="doRegister()">계정 만들기</button>
+  </div>
+
+  <div class="demo-hint">
+    빠른 시작: 회원가입하면 <b>CRWN 1,000,000</b> + <b>USDT 500,000</b> +<br>
+    <b>ETH 100</b> + <b>BTC 5</b> + <b>₩100,000,000</b> 지급됩니다
+  </div>
+
+  <div class="footer">
+    <a href="/">대시보드</a> · <a href="/dex">DEX</a> · <a href="/ai">AI</a>
+  </div>
+</div>
+
+<script>
+const API = '';
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1)));
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+  hideMsg();
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('success').style.display = 'none';
+}
+function showSuccess(msg) {
+  const el = document.getElementById('success');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('error').style.display = 'none';
+}
+function hideMsg() {
+  document.getElementById('error').style.display = 'none';
+  document.getElementById('success').style.display = 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) return showError('이메일과 비밀번호를 입력하세요');
+
+  document.getElementById('loginBtn').disabled = true;
+  document.getElementById('loginBtn').textContent = '로그인 중...';
+
+  try {
+    const r = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    }).then(r => r.json());
+
+    if (r.success) {
+      localStorage.setItem('crowny_token', r.token);
+      localStorage.setItem('crowny_user', JSON.stringify(r.user));
+      showSuccess(`환영합니다, ${r.user.username}님!`);
+      setTimeout(() => window.location.href = '/dex', 800);
+    } else {
+      showError(r.error || '로그인 실패');
+    }
+  } catch(e) {
+    showError('서버 연결 실패: ' + e.message);
+  } finally {
+    document.getElementById('loginBtn').disabled = false;
+    document.getElementById('loginBtn').textContent = '로그인';
+  }
+}
+
+async function doRegister() {
+  const email = document.getElementById('regEmail').value.trim();
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value;
+
+  if (!email || !username || !password) return showError('모든 항목을 입력하세요');
+
+  document.getElementById('regBtn').disabled = true;
+  document.getElementById('regBtn').textContent = '생성 중...';
+
+  try {
+    const r = await fetch(API + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, username, password })
+    }).then(r => r.json());
+
+    if (r.success) {
+      localStorage.setItem('crowny_token', r.token);
+      localStorage.setItem('crowny_user', JSON.stringify(r.user));
+      showSuccess(`계정 생성 완료! ${username}님 환영합니다`);
+      setTimeout(() => window.location.href = '/dex', 800);
+    } else {
+      showError(r.error || '가입 실패');
+    }
+  } catch(e) {
+    showError('서버 연결 실패: ' + e.message);
+  } finally {
+    document.getElementById('regBtn').disabled = false;
+    document.getElementById('regBtn').textContent = '계정 만들기';
+  }
+}
+
+// Already logged in?
+const token = localStorage.getItem('crowny_token');
+if (token) {
+  fetch(API + '/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+    .then(r => r.json())
+    .then(r => { if (r.user) window.location.href = '/dex'; })
+    .catch(() => {});
+}
+</script>
+</body>
+</html>

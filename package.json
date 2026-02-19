@@ -1,0 +1,17 @@
+{
+  "name": "crowny-exchange-platform",
+  "version": "1.0.0",
+  "description": "CrownyDEX + Trading AI Platform — Upbit/Binance/Stocks/Futures",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js --dev"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "jsonwebtoken": "^9.0.3",
+    "uuid": "^13.0.0",
+    "ws": "^8.16.0"
+  }
+}

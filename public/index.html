@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crowny Exchange — DEX + Trading AI</title>
+<style>
+:root { --bg: #0a0e17; --card: #111827; --border: #1e293b; --accent: #22d3ee; --green: #10b981; --red: #ef4444; --orange: #f59e0b; --text: #e2e8f0; --dim: #64748b; --blue: #3b82f6; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'SF Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); min-height:100vh; }
+.header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 12px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom: 1px solid var(--border); }
+.logo { display:flex; align-items:center; gap:10px; }
+.logo svg { width:28px; height:28px; }
+.logo span { font-size:16px; font-weight:700; background: linear-gradient(135deg, var(--accent), var(--green)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.logo .ver { font-size:10px; color:var(--dim); -webkit-text-fill-color:var(--dim); margin-left:4px; }
+.ctp-badge { font-size:10px; background: rgba(34,211,238,0.1); color:var(--accent); padding:3px 8px; border-radius:4px; border:1px solid rgba(34,211,238,0.2); }
+.status { display:flex; gap:12px; align-items:center; font-size:11px; }
+.status .dot { width:6px; height:6px; border-radius:50%; background:var(--green); display:inline-block; }
+.tabs { display:flex; background: var(--card); border-bottom:1px solid var(--border); }
+.tab { padding:10px 20px; cursor:pointer; font-size:12px; color:var(--dim); border-bottom:2px solid transparent; transition:all 0.2s; }
+.tab:hover { color:var(--text); background:rgba(255,255,255,0.02); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.main { display:flex; height: calc(100vh - 90px); overflow:hidden; }
+.panel { flex:1; overflow-y:auto; padding:16px; }
+.panel::-webkit-scrollbar { width:4px; }
+.panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.sidebar { width:320px; border-left:1px solid var(--border); overflow-y:auto; padding:12px; background:rgba(0,0,0,0.2); }
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:12px; }
+.card-title { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+.stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px; }
+.stat { background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; }
+.stat .label { font-size:10px; color:var(--dim); }
+.stat .value { font-size:18px; font-weight:700; margin-top:2px; }
+.stat .change { font-size:10px; margin-top:2px; }
+.stat .change.up { color:var(--green); }
+.stat .change.down { color:var(--red); }
+.pool-row { display:flex; align-items:center; padding:10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.2s; }
+.pool-row:hover { background:rgba(34,211,238,0.05); }
+.pool-row .pair { font-weight:600; font-size:13px; min-width:120px; }
+.pool-row .price { font-size:13px; min-width:100px; text-align:right; }
+.pool-row .vol { font-size:11px; color:var(--dim); min-width:80px; text-align:right; }
+.pool-row .trit { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; margin-right:8px; }
+.trit-p { background:rgba(16,185,129,0.2); color:var(--green); }
+.trit-o { background:rgba(245,158,11,0.2); color:var(--orange); }
+.trit-t { background:rgba(239,68,68,0.2); color:var(--red); }
+.btn { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-family:inherit; transition:all 0.2s; }
+.btn-primary { background:var(--accent); color:#000; font-weight:600; }
+.btn-primary:hover { background:#06b6d4; }
+.btn-green { background:var(--green); color:#000; font-weight:600; }
+.btn-red { background:var(--red); color:#fff; font-weight:600; }
+.btn-sm { padding:5px 10px; font-size:11px; }
+.input { background:rgba(0,0,0,0.4); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:6px; font-size:12px; font-family:inherit; width:100%; }
+.input:focus { outline:none; border-color:var(--accent); }
+select.input { appearance:none; }
+.form-row { display:flex; gap:8px; margin-bottom:8px; }
+.form-row > * { flex:1; }
+.form-label { font-size:10px; color:var(--dim); margin-bottom:4px; display:block; }
+.ai-signal { display:flex; align-items:center; gap:12px; padding:16px; border-radius:8px; margin-bottom:12px; }
+.ai-signal.buy { background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); }
+.ai-signal.sell { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); }
+.ai-signal.hold { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); }
+.ai-trit { font-size:32px; font-weight:700; }
+.ai-detail { flex:1; }
+.ai-detail .title { font-size:14px; font-weight:600; }
+.ai-detail .sub { font-size:11px; color:var(--dim); margin-top:2px; }
+.strategy-row { display:flex; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.03); font-size:11px; }
+.strategy-row .name { min-width:80px; color:var(--dim); }
+.strategy-row .sig { min-width:50px; font-weight:600; }
+.strategy-row .conf { min-width:40px; color:var(--dim); text-align:right; }
+.strategy-row .reason { flex:1; padding-left:8px; font-size:10px; }
+.chart-container { background:rgba(0,0,0,0.3); border-radius:6px; padding:8px; margin:8px 0; height:200px; position:relative; overflow:hidden; }
+canvas { width:100%!important; height:100%!important; }
+.orderbook { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ob-side { font-size:11px; }
+.ob-row { display:flex; justify-content:space-between; padding:2px 4px; position:relative; }
+.ob-row .bar { position:absolute; top:0; height:100%; opacity:0.1; }
+.ob-ask .bar { right:0; background:var(--red); }
+.ob-bid .bar { left:0; background:var(--green); }
+.ob-price { z-index:1; position:relative; }
+.ob-size { z-index:1; position:relative; color:var(--dim); }
+.backtest-result { background:rgba(0,0,0,0.3); padding:12px; border-radius:6px; }
+.bt-stat { display:inline-block; margin:4px 8px 4px 0; font-size:12px; }
+.bt-label { color:var(--dim); font-size:10px; }
+.premium-badge { padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+.premium-positive { background:rgba(239,68,68,0.15); color:var(--red); }
+.premium-negative { background:rgba(16,185,129,0.15); color:var(--green); }
+.hidden { display:none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.pulse { animation: pulse 2s infinite; }
+.loading { text-align:center; padding:40px; color:var(--dim); }
+.mini-chart { height:40px; display:flex; align-items:end; gap:1px; }
+.mini-bar { width:3px; min-height:1px; border-radius:1px 1px 0 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 100 100"><polygon points="50,10 90,80 10,80" fill="none" stroke="url(#g1)" stroke-width="4"/><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#22d3ee"/><stop offset="100%" style="stop-color:#10b981"/></linearGradient></defs></svg>
+    <span>CROWNY EXCHANGE <span class="ver">v1.0</span></span>
+    <span class="ctp-badge">CTP-T △○▽</span>
+  </div>
+  <div class="status">
+    <span><span class="dot"></span> DEX</span>
+    <span><span class="dot"></span> AI</span>
+    <span id="wsStatus"><span class="dot" style="background:var(--orange)"></span> WS</span>
+    <span id="premiumBadge" class="premium-badge premium-positive">김프 ---%</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="dex">💱 DEX</div>
+  <div class="tab" data-tab="trading">🤖 Trading AI</div>
+  <div class="tab" data-tab="market">📊 Market</div>
+  <div class="tab" data-tab="portfolio">💼 Portfolio</div>
+</div>
+
+<!-- ═══ DEX TAB ═══ -->
+<div id="tab-dex" class="main">
+  <div class="panel">
+    <div class="stat-grid" id="dexStats"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">유동성 풀</div>
+      <div id="poolList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">최근 거래</div>
+      <div id="swapHistory" style="max-height:300px;overflow-y:auto;font-size:11px"></div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-title">스왑</div>
+      <div class="form-row">
+        <div><label class="form-label">풀</label><select class="input" id="swapPool"></select></div>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">입력 토큰</label><select class="input" id="swapTokenIn"></select></div>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">수량</label><input class="input" id="swapAmount" type="number" placeholder="0"></div>
+      </div>
+      <div id="swapPreview" style="font-size:11px;color:var(--dim);padding:8px 0"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="executeSwap()">스왑 실행</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">리밋 주문</div>
+      <div class="form-row">
+        <div><label class="form-label">풀</label><select class="input" id="orderPool"></select></div>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">방향</label>
+          <select class="input" id="orderSide"><option value="buy">매수</option><option value="sell">매도</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">가격</label><input class="input" id="orderPrice" type="number" step="0.0001"></div>
+        <div><label class="form-label">수량</label><input class="input" id="orderAmount" type="number"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="placeOrder()">주문</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">오더북 <span id="obPool" style="color:var(--accent)">CRWN-USDT</span></div>
+      <div class="orderbook" id="orderbook"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TRADING AI TAB ═══ -->
+<div id="tab-trading" class="main hidden">
+  <div class="panel">
+    <div class="card">
+      <div class="card-title">AI 분석 설정</div>
+      <div class="form-row">
+        <div><label class="form-label">거래소</label>
+          <select class="input" id="aiExchange"><option value="binance">Binance</option><option value="upbit">Upbit</option></select>
+        </div>
+        <div><label class="form-label">심볼</label>
+          <select class="input" id="aiSymbol">
+            <option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option>
+            <option value="XRPUSDT">XRP/USDT</option><option value="SOLUSDT">SOL/USDT</option>
+            <option value="DOGEUSDT">DOGE/USDT</option><option value="ADAUSDT">ADA/USDT</option>
+          </select>
+        </div>
+        <div><label class="form-label">인터벌</label>
+          <select class="input" id="aiInterval"><option value="15m">15분</option><option value="1h" selected>1시간</option><option value="4h">4시간</option><option value="1d">1일</option></select>
+        </div>
+        <div style="display:flex;align-items:end;gap:6px">
+          <button class="btn btn-primary" onclick="runAnalysis()">🔍 분석</button>
+          <button class="btn btn-green btn-sm" onclick="runBacktest()">📊 백테스트</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="aiResult"></div>
+    <div id="backtestResult"></div>
+
+    <div class="card">
+      <div class="card-title">멀티 심볼 스캔</div>
+      <button class="btn btn-primary btn-sm" onclick="runMultiScan()">전체 스캔</button>
+      <div id="multiScanResult" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-title">AI 전략 (3-Trit Consensus)</div>
+      <div style="font-size:11px; line-height:1.8">
+        <div>📊 <b>RSI</b> — 과매수/과매도 (가중치 1.5×)</div>
+        <div>📈 <b>MACD</b> — 골든/데드크로스 (1.3×)</div>
+        <div>📉 <b>Bollinger</b> — 밴드 터치/수축 (1.2×)</div>
+        <div>📊 <b>Volume</b> — 거래량 이상치 (0.8×)</div>
+        <div>📐 <b>Trend</b> — EMA 정배열/역배열 (1.0×)</div>
+        <div>🔄 <b>Stochastic</b> — K/D 교차 (0.7×)</div>
+      </div>
+      <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:4px;font-size:10px">
+        <div>P(+1) = 매수 | O(0) = 관망 | T(-1) = 매도</div>
+        <div>Score &gt; 0.3 → 매수 | Score &lt; -0.3 → 매도</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">리스크 관리</div>
+      <div style="font-size:11px; line-height:1.8">
+        <div>🛡 포지션 한도: 10%</div>
+        <div>🔻 손절: -3%</div>
+        <div>🔺 익절: +6%</div>
+        <div>📅 일일 거래 제한: 10회</div>
+        <div>⚠️ 최대 드로다운: 15%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upbit 심볼 (KRW 마켓)</div>
+      <div style="font-size:10px; color:var(--dim)">
+        분석 시 exchange=upbit 선택 후<br>
+        심볼: KRW-BTC, KRW-ETH 등<br>
+        (직접 입력 가능)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MARKET TAB ═══ -->
+<div id="tab-market" class="main hidden">
+  <div class="panel">
+    <div class="card">
+      <div class="card-title">실시간 시세 (Upbit + Binance)</div>
+      <button class="btn btn-primary btn-sm" onclick="fetchPrices()" style="margin-bottom:8px">🔄 새로고침</button>
+      <div id="marketPrices"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">김치 프리미엄</div>
+      <div id="kimchiPremium" style="font-size:24px;font-weight:700;padding:16px;text-align:center">---</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-title">빠른 조회</div>
+      <div class="form-row">
+        <div><label class="form-label">거래소</label><select class="input" id="qExchange"><option value="binance">Binance</option><option value="upbit">Upbit</option></select></div>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">심볼</label><input class="input" id="qSymbol" value="BTCUSDT"></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="quickLookup()">조회</button>
+      <div id="quickResult" style="margin-top:8px;font-size:11px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PORTFOLIO TAB ═══ -->
+<div id="tab-portfolio" class="main hidden">
+  <div class="panel">
+    <div class="card">
+      <div class="card-title">내 잔액 (DEX)</div>
+      <div id="myBalances"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">LP 포지션</div>
+      <div id="myLPPositions" style="font-size:12px;color:var(--dim)">유동성 공급 내역이 여기에 표시됩니다</div>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-title">API 설정</div>
+      <div class="form-row"><div><label class="form-label">Upbit Access Key</label><input class="input" id="upbitKey" type="password" placeholder="••••••"></div></div>
+      <div class="form-row"><div><label class="form-label">Upbit Secret Key</label><input class="input" id="upbitSecret" type="password" placeholder="••••••"></div></div>
+      <div class="form-row"><div><label class="form-label">Binance API Key</label><input class="input" id="binanceKey" type="password" placeholder="••••••"></div></div>
+      <div class="form-row"><div><label class="form-label">Binance Secret</label><input class="input" id="binanceSecret" type="password" placeholder="••••••"></div></div>
+      <button class="btn btn-primary btn-sm" onclick="saveApiKeys()">저장</button>
+      <div style="font-size:10px;color:var(--dim);margin-top:6px">* 키는 브라우저에만 저장되며 서버로 전송되지 않습니다</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let ws;
+
+// ═══ Tab Navigation ═══
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.main').forEach(m => m.classList.add('hidden'));
+    tab.classList.add('active');
+    document.getElementById(`tab-${tab.dataset.tab}`).classList.remove('hidden');
+  });
+});
+
+// ═══ WebSocket ═══
+function connectWS() {
+  const wsUrl = `ws://${window.location.host}`;
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => {
+    document.getElementById('wsStatus').innerHTML = '<span class="dot"></span> WS';
+    ws.send(JSON.stringify({ type: 'subscribe_prices' }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'dex_update') updateDexPrices(msg.data);
+    if (msg.type === 'prices') updateMarketPrices(msg.data);
+    if (msg.type === 'swap') addSwapToHistory(msg.data);
+  };
+  ws.onclose = () => {
+    document.getElementById('wsStatus').innerHTML = '<span class="dot" style="background:var(--red)"></span> WS';
+    setTimeout(connectWS, 3000);
+  };
+}
+
+// ═══ Fetch Helpers ═══
+async function api(path) {
+  try { const r = await fetch(API + path); return r.json(); } catch(e) { return { error: e.message }; }
+}
+async function apiPost(path, data) {
+  try { const r = await fetch(API + path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); return r.json(); } catch(e) { return { error: e.message }; }
+}
+
+// ═══ DEX Functions ═══
+async function loadDex() {
+  const [summary, pools, balances] = await Promise.all([
+    api('/api/dex/summary'), api('/api/dex/pools'), api('/api/dex/balances?user=user1')
+  ]);
+
+  // Stats
+  document.getElementById('dexStats').innerHTML = `
+    <div class="stat"><div class="label">토큰</div><div class="value">${summary.tokens || 0}</div></div>
+    <div class="stat"><div class="label">풀</div><div class="value">${summary.pools || 0}</div></div>
+    <div class="stat"><div class="label">스왑</div><div class="value">${(summary.swaps || 0).toLocaleString()}</div></div>
+    <div class="stat"><div class="label">총 거래량</div><div class="value">${(summary.totalVolume || 0).toLocaleString()}</div></div>
+    <div class="stat"><div class="label">총 수수료</div><div class="value">${(summary.totalFees || 0).toLocaleString()}</div></div>
+    <div class="stat"><div class="label">주문</div><div class="value">${summary.orders || 0}</div></div>
+  `;
+
+  // Pools
+  if (pools.pools) {
+    document.getElementById('poolList').innerHTML = pools.pools.map(p => `
+      <div class="pool-row" onclick="selectPool('${p.id}')">
+        <div class="trit ${p.swapCount > 0 ? 'trit-p' : 'trit-o'}">${p.swapCount > 0 ? 'P' : 'O'}</div>
+        <div class="pair">${p.id}</div>
+        <div class="price">${p.price < 0.001 ? p.price.toExponential(3) : p.price.toFixed(6)}</div>
+        <div class="vol">${p.reserveA.toLocaleString()} / ${p.reserveB.toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--dim);margin-left:auto">swaps:${p.swapCount} fee:${p.fees}</div>
+      </div>
+    `).join('');
+
+    // Populate swap/order pool selects
+    const poolOpts = pools.pools.map(p => `<option value="${p.id}">${p.id}</option>`).join('');
+    document.getElementById('swapPool').innerHTML = poolOpts;
+    document.getElementById('orderPool').innerHTML = poolOpts;
+    updateSwapTokens();
+  }
+
+  // Swap history
+  const history = await api('/api/dex/history?limit=20');
+  if (history.swaps) renderSwapHistory(history.swaps);
+
+  // Balances
+  if (balances.balances) renderBalances(balances.balances);
+}
+
+function updateSwapTokens() {
+  const poolId = document.getElementById('swapPool').value;
+  const [a, b] = poolId.split('-');
+  document.getElementById('swapTokenIn').innerHTML = `<option value="${a}">${a}</option><option value="${b}">${b}</option>`;
+}
+document.getElementById('swapPool')?.addEventListener('change', updateSwapTokens);
+
+async function executeSwap() {
+  const pool = document.getElementById('swapPool').value;
+  const tokenIn = document.getElementById('swapTokenIn').value;
+  const amount = document.getElementById('swapAmount').value;
+  if (!amount || amount <= 0) return alert('수량을 입력하세요');
+  const result = await apiPost('/api/dex/swap', { poolId: pool, tokenIn, amount: parseInt(amount) });
+  if (result.success) {
+    document.getElementById('swapPreview').innerHTML = `<span style="color:var(--green)">✓ ${result.result.amountIn} ${result.result.tokenIn} → ${result.result.amountOut} ${result.result.tokenOut} (fee:${result.result.fee})</span>`;
+    loadDex();
+  } else {
+    document.getElementById('swapPreview').innerHTML = `<span style="color:var(--red)">✗ ${result.error}</span>`;
+  }
+}
+
+async function placeOrder() {
+  const pool = document.getElementById('orderPool').value;
+  const side = document.getElementById('orderSide').value;
+  const price = document.getElementById('orderPrice').value;
+  const amount = document.getElementById('orderAmount').value;
+  const result = await apiPost('/api/dex/order', { poolId: pool, side, price, amount: parseInt(amount) });
+  if (result.order) alert(`주문 완료: ${result.order.id}`);
+  loadDex();
+}
+
+function selectPool(poolId) {
+  document.getElementById('swapPool').value = poolId;
+  document.getElementById('orderPool').value = poolId;
+  document.getElementById('obPool').textContent = poolId;
+  updateSwapTokens();
+  loadOrderbook(poolId);
+}
+
+async function loadOrderbook(poolId) {
+  const data = await api(`/api/dex/orderbook?pool=${poolId}`);
+  if (!data.orders) return;
+  const asks = data.orders.filter(o => o.side === 'sell').sort((a,b) => a.price - b.price);
+  const bids = data.orders.filter(o => o.side === 'buy').sort((a,b) => b.price - a.price);
+  document.getElementById('orderbook').innerHTML = `
+    <div class="ob-side"><div style="color:var(--red);font-size:10px;margin-bottom:4px">매도(Ask)</div>
+      ${asks.slice(0,8).map(a => `<div class="ob-row ob-ask"><span class="ob-price" style="color:var(--red)">${a.price.toFixed(6)}</span><span class="ob-size">${a.amount - a.filled}</span></div>`).join('')}
+    </div>
+    <div class="ob-side"><div style="color:var(--green);font-size:10px;margin-bottom:4px">매수(Bid)</div>
+      ${bids.slice(0,8).map(b => `<div class="ob-row ob-bid"><span class="ob-price" style="color:var(--green)">${b.price.toFixed(6)}</span><span class="ob-size">${b.amount - b.filled}</span></div>`).join('')}
+    </div>
+  `;
+}
+
+function renderSwapHistory(swaps) {
+  document.getElementById('swapHistory').innerHTML = swaps.reverse().map(s => {
+    const trit = s.trit === 1 ? 'P' : s.trit === -1 ? 'T' : 'O';
+    const cls = s.trit === 1 ? 'trit-p' : s.trit === -1 ? 'trit-t' : 'trit-o';
+    return `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+      <span class="trit ${cls}" style="display:inline-flex;width:16px;height:16px;font-size:8px">${trit}</span>
+      ${s.amountIn.toLocaleString()} ${s.tokenIn} → ${s.amountOut.toLocaleString()} ${s.tokenOut}
+      <span style="color:var(--dim);font-size:10px">fee:${s.fee} impact:${(s.impact*100).toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+}
+
+function addSwapToHistory(swap) {
+  const el = document.getElementById('swapHistory');
+  const trit = swap.trit === 1 ? 'P' : swap.trit === -1 ? 'T' : 'O';
+  const cls = swap.trit === 1 ? 'trit-p' : swap.trit === -1 ? 'trit-t' : 'trit-o';
+  el.insertAdjacentHTML('afterbegin', `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+    <span class="trit ${cls}" style="display:inline-flex;width:16px;height:16px;font-size:8px">${trit}</span>
+    ${swap.amountIn?.toLocaleString()} ${swap.tokenIn} → ${swap.amountOut?.toLocaleString()} ${swap.tokenOut}
+    <span style="color:var(--dim);font-size:10px">fee:${swap.fee}</span>
+  </div>`);
+}
+
+function updateDexPrices(pools) {
+  const rows = document.querySelectorAll('.pool-row');
+  pools.forEach(p => {
+    rows.forEach(row => {
+      if (row.querySelector('.pair')?.textContent === p.id) {
+        row.querySelector('.price').textContent = p.price < 0.001 ? p.price.toExponential(3) : p.price.toFixed(6);
+      }
+    });
+  });
+}
+
+function renderBalances(bals) {
+  document.getElementById('myBalances').innerHTML = Object.entries(bals)
+    .filter(([k,v]) => v > 0)
+    .map(([token, amount]) => `
+      <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid var(--border)">
+        <span style="font-weight:600">${token}</span>
+        <span>${amount.toLocaleString()}</span>
+      </div>
+    `).join('');
+}
+
+// ═══ Trading AI Functions ═══
+async function runAnalysis() {
+  const exchange = document.getElementById('aiExchange').value;
+  const symbol = document.getElementById('aiSymbol').value;
+  const interval = document.getElementById('aiInterval').value;
+  document.getElementById('aiResult').innerHTML = '<div class="loading pulse">분석 중... △○▽</div>';
+
+  const data = await api(`/api/ai/analyze?exchange=${exchange}&symbol=${symbol}&interval=${interval}`);
+  if (data.error) { document.getElementById('aiResult').innerHTML = `<div class="card" style="color:var(--red)">${data.error}</div>`; return; }
+
+  const cls = data.decision === 'buy' ? 'buy' : data.decision === 'sell' ? 'sell' : 'hold';
+  const emoji = data.trit === 1 ? '🟢' : data.trit === -1 ? '🔴' : '🟡';
+  const tritChar = data.trit === 1 ? '△' : data.trit === -1 ? '▽' : '○';
+
+  document.getElementById('aiResult').innerHTML = `
+    <div class="ai-signal ${cls}">
+      <div class="ai-trit">${emoji} ${tritChar}</div>
+      <div class="ai-detail">
+        <div class="title">${data.tritStr} — ${data.symbol}</div>
+        <div class="sub">${data.reason}</div>
+        <div class="sub">Price: $${data.price?.toLocaleString()} | Score: ${data.score} | Confidence: ${(data.confidence*100).toFixed(0)}%</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">전략별 판단</div>
+      ${(data.strategies || []).map(s => `
+        <div class="strategy-row">
+          <span class="name">${s.name}</span>
+          <span class="sig" style="color:${s.signal==='매수'?'var(--green)':s.signal==='매도'?'var(--red)':'var(--orange)'}">${s.signal}</span>
+          <span class="conf">${s.confidence}</span>
+          <span class="reason">${s.reason}</span>
+        </div>
+      `).join('')}
+    </div>
+    ${data.risk ? `<div class="card">
+      <div class="card-title">리스크</div>
+      <div style="font-size:11px">
+        허용: ${data.risk.allowed ? '✅' : '❌'} | 드로다운: ${data.risk.drawdown}% | 최대 포지션: ${data.risk.maxSize?.toLocaleString()}
+        ${data.risk.risks?.map(r => `<div style="color:${r.level==='block'?'var(--red)':'var(--orange)'};margin-top:2px">⚠ ${r.reason}</div>`).join('')||''}
+      </div>
+    </div>` : ''}
+  `;
+}
+
+async function runBacktest() {
+  const exchange = document.getElementById('aiExchange').value;
+  const symbol = document.getElementById('aiSymbol').value;
+  const interval = document.getElementById('aiInterval').value;
+  document.getElementById('backtestResult').innerHTML = '<div class="loading pulse">백테스트 실행 중...</div>';
+
+  const data = await api(`/api/ai/backtest?exchange=${exchange}&symbol=${symbol}&interval=${interval}&balance=10000000`);
+  if (data.error) { document.getElementById('backtestResult').innerHTML = `<div class="card" style="color:var(--red)">${data.error}</div>`; return; }
+
+  const retColor = parseFloat(data.totalReturn) >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('backtestResult').innerHTML = `
+    <div class="card">
+      <div class="card-title">백테스트 결과 — ${data.symbol} (${data.interval})</div>
+      <div class="backtest-result">
+        <div class="bt-stat"><div class="bt-label">초기 자산</div><div>${data.initialBalance?.toLocaleString()}</div></div>
+        <div class="bt-stat"><div class="bt-label">최종 자산</div><div style="color:${retColor};font-weight:700">${data.finalBalance?.toLocaleString()}</div></div>
+        <div class="bt-stat"><div class="bt-label">수익률</div><div style="color:${retColor};font-weight:700;font-size:18px">${data.totalReturn}</div></div>
+        <div class="bt-stat"><div class="bt-label">거래 수</div><div>${data.totalTrades}</div></div>
+        <div class="bt-stat"><div class="bt-label">승률</div><div>${data.winRate}</div></div>
+        <div class="bt-stat"><div class="bt-label">승/패</div><div style="color:var(--green)">${data.wins}</div> / <div style="color:var(--red)">${data.losses}</div></div>
+        <div class="bt-stat"><div class="bt-label">최대 드로다운</div><div style="color:var(--red)">${data.maxDrawdown}</div></div>
+        <div class="bt-stat"><div class="bt-label">샤프 비율</div><div>${data.sharpeRatio}</div></div>
+      </div>
+      ${data.equity ? `<div class="chart-container"><canvas id="equityChart"></canvas></div>` : ''}
+    </div>
+  `;
+
+  if (data.equity) drawEquityChart(data.equity);
+}
+
+function drawEquityChart(equity) {
+  const canvas = document.getElementById('equityChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.parentElement.clientWidth - 16;
+  const h = 180;
+  canvas.width = w; canvas.height = h;
+
+  const min = Math.min(...equity);
+  const max = Math.max(...equity);
+  const range = max - min || 1;
+
+  ctx.strokeStyle = equity[equity.length-1] >= equity[0] ? '#10b981' : '#ef4444';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < equity.length; i++) {
+    const x = (i / (equity.length - 1)) * w;
+    const y = h - ((equity[i] - min) / range) * (h - 20) - 10;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Fill
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = equity[equity.length-1] >= equity[0] ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+  ctx.fill();
+
+  // Labels
+  ctx.fillStyle = '#64748b'; ctx.font = '10px monospace';
+  ctx.fillText(max.toLocaleString(), 4, 14);
+  ctx.fillText(min.toLocaleString(), 4, h - 4);
+}
+
+async function runMultiScan() {
+  document.getElementById('multiScanResult').innerHTML = '<div class="loading pulse">전체 스캔 중...</div>';
+  const data = await api('/api/ai/multi-analyze?symbols=BTCUSDT,ETHUSDT,XRPUSDT,SOLUSDT,DOGEUSDT,ADAUSDT');
+  if (!data.results) return;
+
+  document.getElementById('multiScanResult').innerHTML = data.results.map(r => {
+    const cls = r.decision === 'buy' ? 'buy' : r.decision === 'sell' ? 'sell' : 'hold';
+    const emoji = r.trit === 1 ? '🟢' : r.trit === -1 ? '🔴' : '🟡';
+    return `<div class="ai-signal ${cls}" style="padding:8px;margin-bottom:4px">
+      <span style="font-size:18px">${emoji}</span>
+      <span style="font-weight:600;min-width:80px">${r.symbol}</span>
+      <span style="font-size:12px">${r.tritStr}</span>
+      <span style="font-size:11px;color:var(--dim);margin-left:auto">Score:${r.score} | $${r.price?.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══ Market Functions ═══
+async function fetchPrices() {
+  document.getElementById('marketPrices').innerHTML = '<div class="loading pulse">시세 로딩 중...</div>';
+  const data = await api('/api/market/prices');
+
+  let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+  html += '<div><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px">📊 Upbit (KRW)</div>';
+  if (data.upbit) {
+    Object.entries(data.upbit).forEach(([k,v]) => {
+      const changeColor = v.changeRate >= 0 ? 'var(--green)' : 'var(--red)';
+      html += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span>${k}</span><span style="font-weight:600">₩${v.price?.toLocaleString()}</span>
+        <span style="color:${changeColor}">${v.changeRate >= 0 ? '+' : ''}${(v.changeRate*100).toFixed(2)}%</span>
+      </div>`;
+    });
+  }
+  html += '</div><div><div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">📊 Binance (USD)</div>';
+  if (data.binance) {
+    Object.entries(data.binance).forEach(([k,v]) => {
+      const changeColor = v.changePercent >= 0 ? 'var(--green)' : 'var(--red)';
+      html += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span>${k}</span><span style="font-weight:600">$${v.price?.toLocaleString()}</span>
+        <span style="color:${changeColor}">${v.changePercent >= 0 ? '+' : ''}${v.changePercent?.toFixed(2)}%</span>
+      </div>`;
+    });
+  }
+  html += '</div></div>';
+  document.getElementById('marketPrices').innerHTML = html;
+
+  // 김프
+  if (data.kimchiPremium) {
+    const p = parseFloat(data.kimchiPremium.premium);
+    const cls = p >= 0 ? 'premium-positive' : 'premium-negative';
+    document.getElementById('kimchiPremium').innerHTML = `
+      <div style="color:${p >= 0 ? 'var(--red)' : 'var(--green)'}">김치 프리미엄: ${p >= 0 ? '+' : ''}${p}%</div>
+      <div style="font-size:12px;color:var(--dim)">추정 환율: ₩${data.kimchiPremium.usdkrw}</div>
+    `;
+    document.getElementById('premiumBadge').textContent = `김프 ${p >= 0 ? '+' : ''}${p}%`;
+    document.getElementById('premiumBadge').className = `premium-badge ${cls}`;
+  }
+}
+
+function updateMarketPrices(data) {
+  if (data.kimchiPremium) {
+    const p = parseFloat(data.kimchiPremium.premium);
+    document.getElementById('premiumBadge').textContent = `김프 ${p >= 0 ? '+' : ''}${p}%`;
+  }
+}
+
+async function quickLookup() {
+  const exchange = document.getElementById('qExchange').value;
+  const symbol = document.getElementById('qSymbol').value;
+  const candles = await api(`/api/market/candles?exchange=${exchange}&symbol=${symbol}&interval=1h&count=24`);
+  if (candles.candles && candles.candles.length > 0) {
+    const last = candles.candles[candles.candles.length - 1];
+    const first = candles.candles[0];
+    const change = ((last.close - first.open) / first.open * 100).toFixed(2);
+    document.getElementById('quickResult').innerHTML = `
+      <div style="padding:8px;background:rgba(0,0,0,0.3);border-radius:4px">
+        <div style="font-weight:600">${symbol} (${exchange})</div>
+        <div>현재: ${last.close.toLocaleString()}</div>
+        <div>고가: ${Math.max(...candles.candles.map(c=>c.high)).toLocaleString()}</div>
+        <div>저가: ${Math.min(...candles.candles.map(c=>c.low)).toLocaleString()}</div>
+        <div style="color:${change>=0?'var(--green)':'var(--red)'}">24h: ${change}%</div>
+      </div>
+    `;
+  }
+}
+
+function saveApiKeys() { alert('API 키가 로컬에 저장되었습니다 (데모)'); }
+
+// ═══ Init ═══
+loadDex();
+fetchPrices();
+connectWS();
+loadOrderbook('CRWN-USDT');
+</script>
+</body>
+</html>

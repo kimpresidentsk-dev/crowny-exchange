@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crowny Trading AI — 시그널 분석</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0c15;--bg2:#0f1423;--bg3:#151b2e;--bg4:#1c2440;
+  --purple:#7c4dff;--purple2:#651fff;--purpledim:rgba(124,77,255,.12);
+  --blue:#448aff;--bluedim:rgba(68,138,255,.12);
+  --green:#00e676;--greendim:rgba(0,230,118,.12);
+  --red:#ff5252;--reddim:rgba(255,82,82,.12);
+  --orange:#ff9800;--orangedim:rgba(255,152,0,.12);
+  --cyan:#00e5ff;
+  --text:#e8eaed;--text2:#9ca3af;--text3:#6b7280;
+  --border:#1a2240;
+  --grad:linear-gradient(135deg,#7c4dff,#448aff);
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* Glow backgrounds */
+.glow1{position:fixed;top:-150px;left:20%;width:500px;height:500px;background:radial-gradient(circle,rgba(124,77,255,.06),transparent 70%);pointer-events:none}
+.glow2{position:fixed;bottom:-150px;right:10%;width:400px;height:400px;background:radial-gradient(circle,rgba(68,138,255,.05),transparent 70%);pointer-events:none}
+
+/* Header */
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+header .logo{font-weight:700;font-size:16px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+header .logo::before{content:'🤖';-webkit-text-fill-color:initial}
+header .logo span{font-size:11px;-webkit-text-fill-color:var(--text3)}
+header .nav{display:flex;gap:4px}
+header .nav a{padding:6px 14px;border-radius:6px;color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;transition:all .2s}
+header .nav a:hover,header .nav a.active{background:var(--purpledim);color:var(--purple)}
+header .right{display:flex;align-items:center;gap:10px}
+header .ws-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
+header .ws-dot{width:6px;height:6px;border-radius:50%;background:var(--red)}
+header .ws-dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+.btn-api{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s}
+.btn-api:hover{border-color:var(--purple);color:var(--purple)}
+
+/* Container */
+.container{max-width:1400px;margin:0 auto;padding:16px 20px}
+
+/* Control Bar */
+.control-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--bg2);border-radius:12px;border:1px solid var(--border)}
+.control-group{display:flex;align-items:center;gap:6px}
+.control-label{font-size:11px;color:var(--text3);white-space:nowrap}
+.control-select{padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:'Outfit',sans-serif;cursor:pointer;outline:none}
+.control-select:focus{border-color:var(--purple)}
+.btn-analyze{padding:8px 20px;background:var(--grad);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s}
+.btn-analyze:hover{filter:brightness(1.15);box-shadow:0 0 20px rgba(124,77,255,.3)}
+.btn-analyze:disabled{opacity:.5;cursor:not-allowed}
+.btn-scan{padding:8px 16px;background:transparent;border:1px solid var(--purple);border-radius:8px;color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s}
+.btn-scan:hover{background:var(--purpledim)}
+
+/* Signal Card */
+.signal-card{background:var(--bg2);border-radius:16px;border:1px solid var(--border);padding:24px;margin-bottom:16px;position:relative;overflow:hidden}
+.signal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0}
+.signal-card.buy::before{background:var(--green)}
+.signal-card.hold::before{background:var(--orange)}
+.signal-card.sell::before{background:var(--red)}
+
+.signal-main{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.signal-icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0}
+.signal-card.buy .signal-icon{background:var(--greendim);border:2px solid var(--green);box-shadow:0 0 30px rgba(0,230,118,.15)}
+.signal-card.hold .signal-icon{background:var(--orangedim);border:2px solid var(--orange);box-shadow:0 0 30px rgba(255,152,0,.15)}
+.signal-card.sell .signal-icon{background:var(--reddim);border:2px solid var(--red);box-shadow:0 0 30px rgba(255,82,82,.15)}
+
+.signal-info{flex:1}
+.signal-label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.signal-text{font-size:28px;font-weight:700;margin-bottom:4px}
+.signal-card.buy .signal-text{color:var(--green)}
+.signal-card.hold .signal-text{color:var(--orange)}
+.signal-card.sell .signal-text{color:var(--red)}
+.signal-score{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text2)}
+.signal-score b{font-size:18px}
+
+.signal-meta{display:flex;gap:20px;font-size:12px;color:var(--text3);margin-top:8px;flex-wrap:wrap}
+.signal-meta span b{color:var(--text2);font-family:'JetBrains Mono',monospace}
+
+/* Strategy Grid */
+.strat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:16px}
+.strat-card{background:var(--bg3);border-radius:10px;padding:14px;border:1px solid var(--border);transition:all .2s}
+.strat-card:hover{border-color:var(--purple)}
+.strat-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.strat-name{font-size:12px;font-weight:600}
+.strat-signal{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600}
+.strat-signal.buy{background:var(--greendim);color:var(--green)}
+.strat-signal.hold{background:var(--orangedim);color:var(--orange)}
+.strat-signal.sell{background:var(--reddim);color:var(--red)}
+.strat-conf{margin-bottom:6px}
+.strat-conf-bar{height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
+.strat-conf-fill{height:100%;border-radius:2px;transition:width .5s}
+.strat-conf-label{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px}
+.strat-reason{font-size:10px;color:var(--text3);line-height:1.3}
+
+/* Risk Box */
+.risk-box{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+.risk-item{flex:1;min-width:120px;background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border)}
+.risk-label{font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px}
+.risk-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600}
+.risk-val.ok{color:var(--green)}
+.risk-val.warn{color:var(--orange)}
+.risk-val.danger{color:var(--red)}
+
+/* Backtest */
+.backtest-section{background:var(--bg2);border-radius:16px;border:1px solid var(--border);padding:24px;margin-bottom:16px}
+.section-title{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.bt-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.bt-stat{background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border)}
+.bt-stat .label{font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px}
+.bt-stat .value{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600}
+.bt-stat .value.pos{color:var(--green)}
+.bt-stat .value.neg{color:var(--red)}
+.bt-chart{background:var(--bg);border-radius:10px;overflow:hidden;height:200px;position:relative}
+.bt-chart canvas{width:100%;height:100%}
+
+/* Multi-scan */
+.scan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.scan-card{background:var(--bg2);border-radius:12px;border:1px solid var(--border);padding:16px;cursor:pointer;transition:all .2s}
+.scan-card:hover{border-color:var(--purple);transform:translateY(-2px)}
+.scan-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.scan-symbol{font-size:16px;font-weight:700}
+.scan-signal{font-size:20px}
+.scan-score-bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.scan-score-fill{height:100%;border-radius:3px}
+.scan-details{font-size:11px;color:var(--text3)}
+
+/* Auto-trade toggle */
+.auto-trade{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);margin-top:16px}
+.auto-trade .label{font-size:13px;font-weight:600;flex:1}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--bg);border:1px solid var(--border);cursor:pointer;position:relative;transition:all .2s}
+.toggle.on{background:var(--purple);border-color:var(--purple)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.on::after{transform:translateX(20px)}
+.auto-status{font-size:11px;color:var(--text3)}
+
+/* API Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;width:460px;max-width:90vw}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-field{margin-bottom:14px}
+.modal-field label{display:block;font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase}
+.modal-field input{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none}
+.modal-field input:focus{border-color:var(--purple)}
+.modal-field .hint{font-size:10px;color:var(--text3);margin-top:3px}
+.modal-actions{display:flex;gap:8px;margin-top:16px}
+.modal-btn{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;border:none;transition:all .2s}
+.modal-btn.primary{background:var(--grad);color:#fff}
+.modal-btn.secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+
+/* Loading */
+.loading{text-align:center;padding:40px;color:var(--text3)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Responsive */
+@media(max-width:768px){
+  .container{padding:12px}
+  .signal-main{flex-direction:column;text-align:center}
+  .strat-grid{grid-template-columns:1fr 1fr}
+  .bt-stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="glow1"></div>
+<div class="glow2"></div>
+
+<header>
+  <div class="logo">Crowny Trading AI <span>v1.0</span></div>
+  <div class="nav">
+    <a href="/dex">💱 DEX</a>
+    <a href="/ai" class="active">🤖 AI</a>
+    <a href="/">📊 대시보드</a>
+  </div>
+  <div class="right">
+    <div class="ws-status"><div class="ws-dot" id="wsDot"></div><span id="wsText">연결 중...</span></div>
+    <button class="btn-api" onclick="showApiModal()">🔑 API 키</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Control Bar -->
+  <div class="control-bar">
+    <div class="control-group">
+      <span class="control-label">거래소</span>
+      <select class="control-select" id="selExchange">
+        <option value="binance">Binance</option>
+        <option value="upbit">Upbit</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <span class="control-label">심볼</span>
+      <select class="control-select" id="selSymbol">
+        <option value="BTCUSDT">BTC/USDT</option>
+        <option value="ETHUSDT">ETH/USDT</option>
+        <option value="XRPUSDT">XRP/USDT</option>
+        <option value="SOLUSDT">SOL/USDT</option>
+        <option value="DOGEUSDT">DOGE/USDT</option>
+        <option value="ADAUSDT">ADA/USDT</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <span class="control-label">인터벌</span>
+      <select class="control-select" id="selInterval">
+        <option value="15m">15분</option>
+        <option value="1h" selected>1시간</option>
+        <option value="4h">4시간</option>
+        <option value="1d">1일</option>
+      </select>
+    </div>
+    <button class="btn-analyze" id="btnAnalyze" onclick="runAnalysis()">⚡ AI 분석</button>
+    <button class="btn-analyze" id="btnBacktest" onclick="runBacktest()" style="background:var(--bg3);border:1px solid var(--border)">📊 백테스트</button>
+    <div style="flex:1"></div>
+    <button class="btn-scan" onclick="runMultiScan()">🔍 멀티 스캔</button>
+  </div>
+
+  <!-- Signal Result -->
+  <div id="signalSection" style="display:none">
+    <div class="signal-card" id="signalCard">
+      <div class="signal-main">
+        <div class="signal-icon" id="signalIcon">△</div>
+        <div class="signal-info">
+          <div class="signal-label">3-Trit AI 시그널</div>
+          <div class="signal-text" id="signalText">BUY △</div>
+          <div class="signal-score">종합 스코어: <b id="signalScore">0.00</b> | 신뢰도: <b id="signalConf">0%</b></div>
+          <div class="signal-meta">
+            <span>심볼: <b id="sigSymbol">BTCUSDT</b></span>
+            <span>거래소: <b id="sigExchange">Binance</b></span>
+            <span>인터벌: <b id="sigInterval">1h</b></span>
+            <span>분석 시간: <b id="sigTime">—</b></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Strategy breakdown -->
+      <div class="strat-grid" id="stratGrid"></div>
+
+      <!-- Risk -->
+      <div class="risk-box" id="riskBox"></div>
+
+      <!-- Auto-trade -->
+      <div class="auto-trade">
+        <div>
+          <div class="label">🤖 자동매매</div>
+          <div class="auto-status" id="autoStatus">비활성 — API 키 설정 필요</div>
+        </div>
+        <div class="toggle" id="autoToggle" onclick="toggleAutoTrade()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loadingAnalysis" style="display:none">
+    <div class="loading"><div class="spinner"></div><br>AI 분석 중...</div>
+  </div>
+
+  <!-- Backtest Result -->
+  <div id="backtestSection" style="display:none">
+    <div class="backtest-section">
+      <div class="section-title">📊 백테스트 결과</div>
+      <div class="bt-stats" id="btStats"></div>
+      <div class="bt-chart"><canvas id="btChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Multi-scan Result -->
+  <div id="scanSection" style="display:none">
+    <div class="section-title" style="margin-top:8px">🔍 멀티 심볼 스캔</div>
+    <div class="scan-grid" id="scanGrid"></div>
+  </div>
+
+  <!-- Realtime Prices -->
+  <div class="backtest-section" style="margin-top:16px">
+    <div class="section-title">📡 실시간 시세</div>
+    <div class="bt-stats" id="livePrices">
+      <div class="bt-stat"><div class="label">데이터 로딩 중...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <h3>🔑 API 키 설정</h3>
+    <div class="modal-field">
+      <label>Upbit Access Key</label>
+      <input type="password" id="upbitAccess" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+      <div class="hint">업비트 > 마이페이지 > Open API 관리</div>
+    </div>
+    <div class="modal-field">
+      <label>Upbit Secret Key</label>
+      <input type="password" id="upbitSecret" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    </div>
+    <div class="modal-field">
+      <label>Binance API Key</label>
+      <input type="password" id="binanceKey" placeholder="xxxxxxxxxxxxxxxxx">
+      <div class="hint">바이낸스 > API Management</div>
+    </div>
+    <div class="modal-field">
+      <label>Binance Secret Key</label>
+      <input type="password" id="binanceSecret" placeholder="xxxxxxxxxxxxxxxxx">
+    </div>
+    <div class="modal-field" style="font-size:11px;color:var(--orange);background:var(--orangedim);padding:10px;border-radius:8px">
+      ⚠️ API 키는 브라우저 로컬 스토리지에만 저장됩니다. 서버로 전송되지 않습니다.
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="hideApiModal()">취소</button>
+      <button class="modal-btn primary" onclick="saveApiKeys()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// Crowny Trading AI — Client Logic
+// ═══════════════════════════════════════════════════
+
+const API = '';
+let ws = null;
+let autoTrading = false;
+let lastAnalysis = null;
+
+// ─── WebSocket ───
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+  ws.onopen = () => {
+    document.getElementById('wsDot').classList.add('on');
+    document.getElementById('wsText').textContent = '연결됨';
+    ws.send(JSON.stringify({ type: 'subscribe_prices' }));
+  };
+  ws.onclose = () => {
+    document.getElementById('wsDot').classList.remove('on');
+    document.getElementById('wsText').textContent = '재연결 중...';
+    setTimeout(connectWS, 3000);
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'prices') renderLivePrices(msg.data);
+    if (msg.type === 'analysis') handleAnalysisResult(msg.data);
+  };
+}
+
+// ─── Analysis ───
+async function runAnalysis() {
+  const exchange = document.getElementById('selExchange').value;
+  const symbol = document.getElementById('selSymbol').value;
+  const interval = document.getElementById('selInterval').value;
+  
+  document.getElementById('signalSection').style.display = 'none';
+  document.getElementById('loadingAnalysis').style.display = 'block';
+  document.getElementById('btnAnalyze').disabled = true;
+  document.getElementById('btnAnalyze').textContent = '분석 중...';
+  
+  try {
+    const data = await fetch(`${API}/api/ai/analyze?exchange=${exchange}&symbol=${symbol}&interval=${interval}`).then(r => r.json());
+    handleAnalysisResult(data);
+  } catch(e) {
+    alert('분석 실패: ' + e.message);
+  } finally {
+    document.getElementById('loadingAnalysis').style.display = 'none';
+    document.getElementById('btnAnalyze').disabled = false;
+    document.getElementById('btnAnalyze').textContent = '⚡ AI 분석';
+  }
+}
+
+function handleAnalysisResult(data) {
+  if (data.error) {
+    alert('분석 오류: ' + data.error);
+    return;
+  }
+  
+  lastAnalysis = data;
+  const consensus = data.consensus || {};
+  const signal = consensus.signal || 'HOLD';
+  const score = consensus.score || 0;
+  const confidence = consensus.confidence || 0;
+  
+  const card = document.getElementById('signalCard');
+  card.className = 'signal-card ' + (signal === 'BUY' ? 'buy' : signal === 'SELL' ? 'sell' : 'hold');
+  
+  const trit = signal === 'BUY' ? '△' : signal === 'SELL' ? '▽' : '○';
+  const emoji = signal === 'BUY' ? '🟢' : signal === 'SELL' ? '🔴' : '🟡';
+  
+  document.getElementById('signalIcon').textContent = trit;
+  document.getElementById('signalText').textContent = `${signal} ${trit}`;
+  document.getElementById('signalScore').textContent = score.toFixed(3);
+  document.getElementById('signalConf').textContent = (confidence * 100).toFixed(1) + '%';
+  
+  document.getElementById('sigSymbol').textContent = data.symbol || '—';
+  document.getElementById('sigExchange').textContent = document.getElementById('selExchange').value;
+  document.getElementById('sigInterval').textContent = document.getElementById('selInterval').value;
+  document.getElementById('sigTime').textContent = new Date().toLocaleTimeString('ko-KR');
+  
+  // Strategies
+  const strategies = data.strategies || [];
+  document.getElementById('stratGrid').innerHTML = strategies.map(s => {
+    const sig = s.signal === 1 ? 'buy' : s.signal === -1 ? 'sell' : 'hold';
+    const sigText = s.signal === 1 ? '△ BUY' : s.signal === -1 ? '▽ SELL' : '○ HOLD';
+    const conf = ((s.confidence || 0) * 100).toFixed(0);
+    const barColor = sig === 'buy' ? 'var(--green)' : sig === 'sell' ? 'var(--red)' : 'var(--orange)';
+    return `<div class="strat-card">
+      <div class="strat-head">
+        <span class="strat-name">${s.name || '—'}</span>
+        <span class="strat-signal ${sig}">${sigText}</span>
+      </div>
+      <div class="strat-conf">
+        <div class="strat-conf-bar"><div class="strat-conf-fill" style="width:${conf}%;background:${barColor}"></div></div>
+        <div class="strat-conf-label"><span>신뢰도</span><span>${conf}%</span></div>
+      </div>
+      <div class="strat-reason">${s.reason || '—'}</div>
+    </div>`;
+  }).join('');
+  
+  // Risk
+  const risk = data.risk || {};
+  document.getElementById('riskBox').innerHTML = `
+    <div class="risk-item">
+      <div class="risk-label">거래 허용</div>
+      <div class="risk-val ${risk.allowed ? 'ok' : 'danger'}">${risk.allowed ? '✓ 허용' : '✗ 제한'}</div>
+    </div>
+    <div class="risk-item">
+      <div class="risk-label">일일 거래</div>
+      <div class="risk-val ${(risk.dailyTrades || 0) < 8 ? 'ok' : 'warn'}">${risk.dailyTrades || 0} / 10</div>
+    </div>
+    <div class="risk-item">
+      <div class="risk-label">최대 낙폭</div>
+      <div class="risk-val ${(risk.drawdown || 0) < 0.1 ? 'ok' : 'warn'}">${((risk.drawdown || 0) * 100).toFixed(1)}%</div>
+    </div>
+    ${(risk.warnings || []).length ? `<div class="risk-item" style="border-color:var(--orange)">
+      <div class="risk-label">경고</div>
+      <div class="risk-val warn">${risk.warnings.join(', ')}</div>
+    </div>` : ''}
+  `;
+  
+  document.getElementById('signalSection').style.display = 'block';
+}
+
+// ─── Backtest ───
+async function runBacktest() {
+  const exchange = document.getElementById('selExchange').value;
+  const symbol = document.getElementById('selSymbol').value;
+  const interval = document.getElementById('selInterval').value;
+  
+  document.getElementById('btnBacktest').disabled = true;
+  document.getElementById('btnBacktest').textContent = '실행 중...';
+  
+  try {
+    const data = await fetch(`${API}/api/ai/backtest?exchange=${exchange}&symbol=${symbol}&interval=${interval}&balance=10000000`).then(r => r.json());
+    renderBacktest(data);
+  } catch(e) {
+    alert('백테스트 실패: ' + e.message);
+  } finally {
+    document.getElementById('btnBacktest').disabled = false;
+    document.getElementById('btnBacktest').textContent = '📊 백테스트';
+  }
+}
+
+function renderBacktest(data) {
+  if (data.error) { alert(data.error); return; }
+  
+  const stats = data.metrics || {};
+  const initial = stats.initialBalance || 10000000;
+  const final = stats.finalBalance || initial;
+  const ret = ((final - initial) / initial * 100);
+  const isPos = ret >= 0;
+  
+  document.getElementById('btStats').innerHTML = `
+    <div class="bt-stat"><div class="label">초기 자산</div><div class="value">${fmtN(initial, 0)}</div></div>
+    <div class="bt-stat"><div class="label">최종 자산</div><div class="value ${isPos ? 'pos' : 'neg'}">${fmtN(final, 0)}</div></div>
+    <div class="bt-stat"><div class="label">수익률</div><div class="value ${isPos ? 'pos' : 'neg'}">${isPos ? '+' : ''}${ret.toFixed(2)}%</div></div>
+    <div class="bt-stat"><div class="label">거래 횟수</div><div class="value">${stats.totalTrades || 0}</div></div>
+    <div class="bt-stat"><div class="label">승률</div><div class="value">${((stats.winRate || 0) * 100).toFixed(1)}%</div></div>
+    <div class="bt-stat"><div class="label">승/패</div><div class="value"><span style="color:var(--green)">${stats.wins || 0}W</span> / <span style="color:var(--red)">${stats.losses || 0}L</span></div></div>
+    <div class="bt-stat"><div class="label">최대 낙폭</div><div class="value neg">-${((stats.maxDrawdown || 0) * 100).toFixed(2)}%</div></div>
+    <div class="bt-stat"><div class="label">샤프 비율</div><div class="value">${(stats.sharpeRatio || 0).toFixed(2)}</div></div>
+  `;
+  
+  // Equity chart
+  const equity = data.equityCurve || [];
+  if (equity.length > 1) renderEquityChart(equity);
+  
+  document.getElementById('backtestSection').style.display = 'block';
+}
+
+function renderEquityChart(equity) {
+  const canvas = document.getElementById('btChart');
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.height * 2;
+  ctx.scale(2, 2);
+  const W = rect.width, H = rect.height;
+  
+  ctx.fillStyle = '#0a0c15';
+  ctx.fillRect(0, 0, W, H);
+  
+  const min = Math.min(...equity) * 0.998;
+  const max = Math.max(...equity) * 1.002;
+  const range = max - min || 1;
+  const padL = 70, padR = 10, padT = 15, padB = 25;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,.04)';
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (cH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    const val = max - (range / 4) * i;
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtN(val, 0), padL - 6, y + 3);
+  }
+  
+  // Fill
+  const initial = equity[0];
+  const gradient = ctx.createLinearGradient(0, padT, 0, H - padB);
+  const isUp = equity[equity.length - 1] >= initial;
+  const color = isUp ? '#7c4dff' : '#ff5252';
+  gradient.addColorStop(0, isUp ? 'rgba(124,77,255,.15)' : 'rgba(255,82,82,.15)');
+  gradient.addColorStop(1, 'transparent');
+  
+  ctx.beginPath();
+  ctx.moveTo(padL, padT + cH);
+  equity.forEach((v, i) => {
+    const x = padL + (i / (equity.length - 1)) * cW;
+    const y = padT + (1 - (v - min) / range) * cH;
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padL + cW, padT + cH);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  
+  // Line
+  ctx.beginPath();
+  equity.forEach((v, i) => {
+    const x = padL + (i / (equity.length - 1)) * cW;
+    const y = padT + (1 - (v - min) / range) * cH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  
+  // Initial line
+  const initY = padT + (1 - (initial - min) / range) * cH;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(padL, initY); ctx.lineTo(W - padR, initY); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ─── Multi-scan ───
+async function runMultiScan() {
+  document.getElementById('scanSection').style.display = 'block';
+  document.getElementById('scanGrid').innerHTML = '<div class="loading"><div class="spinner"></div><br>6개 심볼 스캔 중...</div>';
+  
+  try {
+    const data = await fetch(`${API}/api/ai/multi-analyze?symbols=BTCUSDT,ETHUSDT,XRPUSDT,SOLUSDT,DOGEUSDT,ADAUSDT`).then(r => r.json());
+    renderScan(data.results || []);
+  } catch(e) {
+    document.getElementById('scanGrid').innerHTML = `<div style="color:var(--red)">스캔 실패: ${e.message}</div>`;
+  }
+}
+
+function renderScan(results) {
+  document.getElementById('scanGrid').innerHTML = results.map(r => {
+    const c = r.consensus || {};
+    const signal = c.signal || 'HOLD';
+    const score = c.score || 0;
+    const conf = c.confidence || 0;
+    const trit = signal === 'BUY' ? '🟢 △' : signal === 'SELL' ? '🔴 ▽' : '🟡 ○';
+    const color = signal === 'BUY' ? 'var(--green)' : signal === 'SELL' ? 'var(--red)' : 'var(--orange)';
+    const scoreWidth = Math.abs(score) * 100;
+    
+    return `<div class="scan-card" onclick="quickAnalyze('${r.symbol}')">
+      <div class="scan-head">
+        <span class="scan-symbol">${r.symbol || '—'}</span>
+        <span class="scan-signal">${trit}</span>
+      </div>
+      <div class="scan-score-bar"><div class="scan-score-fill" style="width:${scoreWidth}%;background:${color}"></div></div>
+      <div class="scan-details">
+        스코어: <span class="mono" style="color:${color}">${score.toFixed(3)}</span> · 
+        신뢰도: <span class="mono">${(conf * 100).toFixed(0)}%</span> · 
+        ${signal}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function quickAnalyze(symbol) {
+  const select = document.getElementById('selSymbol');
+  for (let opt of select.options) {
+    if (opt.value === symbol) { opt.selected = true; break; }
+  }
+  runAnalysis();
+}
+
+// ─── Live Prices ───
+function renderLivePrices(data) {
+  const upbit = data.upbit || {};
+  const binance = data.binance || {};
+  const premium = data.kimchiPremium || {};
+  
+  let html = '';
+  
+  // Binance
+  const bPairs = Object.keys(binance);
+  bPairs.forEach(sym => {
+    const p = binance[sym];
+    if (!p || !p.lastPrice) return;
+    const change = parseFloat(p.priceChangePercent || 0);
+    const cls = change >= 0 ? 'pos' : 'neg';
+    const sign = change >= 0 ? '+' : '';
+    html += `<div class="bt-stat" style="cursor:pointer" onclick="quickAnalyze('${sym}')">
+      <div class="label">🔶 ${sym}</div>
+      <div class="value mono" style="font-size:14px">$${fmtN(parseFloat(p.lastPrice), 2)}</div>
+      <div style="font-size:10px;color:var(--${cls === 'pos' ? 'green' : 'red'})">${sign}${change.toFixed(2)}%</div>
+    </div>`;
+  });
+  
+  // Kimchi premium
+  if (premium.premium) {
+    const prem = premium.premium;
+    const cls = prem > 0 ? 'pos' : 'neg';
+    html += `<div class="bt-stat" style="border-color:var(--orange)">
+      <div class="label">🌶️ 김치 프리미엄</div>
+      <div class="value mono ${cls}" style="font-size:14px">${prem > 0 ? '+' : ''}${prem.toFixed(2)}%</div>
+      <div style="font-size:10px;color:var(--text3)">KRW/USD: ${fmtN(premium.krwUsdRate || 0, 0)}</div>
+    </div>`;
+  }
+  
+  document.getElementById('livePrices').innerHTML = html || '<div class="bt-stat"><div class="label">시세 데이터 로딩 중...</div></div>';
+}
+
+// ─── Auto-trade ───
+function toggleAutoTrade() {
+  const keys = loadApiKeys();
+  if (!keys.binanceKey && !keys.upbitAccess) {
+    alert('API 키를 먼저 설정하세요');
+    showApiModal();
+    return;
+  }
+  autoTrading = !autoTrading;
+  document.getElementById('autoToggle').classList.toggle('on', autoTrading);
+  document.getElementById('autoStatus').textContent = autoTrading 
+    ? '✓ 활성 — AI 시그널 기반 자동 매매 실행 중' 
+    : '비활성';
+}
+
+// ─── API Keys ───
+function showApiModal() {
+  const keys = loadApiKeys();
+  document.getElementById('upbitAccess').value = keys.upbitAccess || '';
+  document.getElementById('upbitSecret').value = keys.upbitSecret || '';
+  document.getElementById('binanceKey').value = keys.binanceKey || '';
+  document.getElementById('binanceSecret').value = keys.binanceSecret || '';
+  document.getElementById('apiModal').classList.add('show');
+}
+
+function hideApiModal() {
+  document.getElementById('apiModal').classList.remove('show');
+}
+
+function saveApiKeys() {
+  const keys = {
+    upbitAccess: document.getElementById('upbitAccess').value,
+    upbitSecret: document.getElementById('upbitSecret').value,
+    binanceKey: document.getElementById('binanceKey').value,
+    binanceSecret: document.getElementById('binanceSecret').value,
+  };
+  localStorage.setItem('crowny_api_keys', JSON.stringify(keys));
+  hideApiModal();
+  document.getElementById('autoStatus').textContent = '비활성 — API 키 저장됨';
+}
+
+function loadApiKeys() {
+  try { return JSON.parse(localStorage.getItem('crowny_api_keys') || '{}'); } 
+  catch { return {}; }
+}
+
+// ─── Upbit symbols ───
+document.getElementById('selExchange').addEventListener('change', (e) => {
+  const sel = document.getElementById('selSymbol');
+  if (e.target.value === 'upbit') {
+    sel.innerHTML = `
+      <option value="KRW-BTC">BTC/KRW</option>
+      <option value="KRW-ETH">ETH/KRW</option>
+      <option value="KRW-XRP">XRP/KRW</option>
+      <option value="KRW-SOL">SOL/KRW</option>
+      <option value="KRW-DOGE">DOGE/KRW</option>
+      <option value="KRW-ADA">ADA/KRW</option>
+    `;
+  } else {
+    sel.innerHTML = `
+      <option value="BTCUSDT">BTC/USDT</option>
+      <option value="ETHUSDT">ETH/USDT</option>
+      <option value="XRPUSDT">XRP/USDT</option>
+      <option value="SOLUSDT">SOL/USDT</option>
+      <option value="DOGEUSDT">DOGE/USDT</option>
+      <option value="ADAUSDT">ADA/USDT</option>
+    `;
+  }
+});
+
+// ─── Utils ───
+function fmtN(n, d = 2) {
+  if (n == null || isNaN(n)) return '0';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+// ─── Modal close on outside click ───
+document.getElementById('apiModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('apiModal')) hideApiModal();
+});
+
+// ─── Init ───
+connectWS();
+</script>
+</body>
+</html>
